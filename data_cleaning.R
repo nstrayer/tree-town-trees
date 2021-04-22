@@ -6,8 +6,6 @@ library(tidyr)
 library(ggplot2)
 library(ggtext)
 library(stringr)
-library(leaflet)
-library(leafgl)
 library(sf)
 
 diameter_levels <- c(
@@ -30,6 +28,7 @@ height_levels <- c(
   "> 70'"     = "GT70"
 )
 
+
 # Downloaded from https://data.a2gov.org/feeds/GIS/Trees/A2Trees.zip on April 19th, 2020
 
 x <- st_transform(st_read("A2Trees/"), "+proj=longlat +datum=WGS84 +no_defs") %>%
@@ -50,15 +49,35 @@ x <- st_transform(st_read("A2Trees/"), "+proj=longlat +datum=WGS84 +no_defs") %>
     height = HEIGHT,
     # height_date = HEIGHTDATE
   ) %>%
+  mutate(
+    diameter = factor(diameter, levels = diameter_levels, labels = names(diameter_levels)),
+    height = factor(height, levels = height_levels, labels = names(height_levels)),
+    common_name = str_to_title(common_name),
+    common_name = case_when(
+      common_name == "Coffeetree, Kentucky" ~ "Kentucky Coffeetree",
+      common_name == "Redwood, Dawn"        ~ "Dawn Redwood",
+      common_name == "Maple, Miyabe"        ~ "Maple, Miyabei",
+      common_name == "Tulip Tree"           ~ "Tuliptree",
+      common_name == "Katsuratree"          ~ "Katsura Tree",
+      common_name == "Pear, Common"         ~ "Pear",
+      common_name == "Juniper, Common"      ~ "Juniper",
+      TRUE ~ common_name
+    ),
+    common_genus = str_to_title(common_genus),
+    common_genus = case_when(
+      common_genus == "Sycamoreplanetree" ~ "Sycamore/Planetree",
+      common_genus == "Applecrabapple"    ~ "Apple/Crabapple",
+      common_genus == "Tupeloblackgum"    ~ "Tupelo/Blackgum",
+      TRUE ~ common_genus
+    )
+  ) %>%
   filter(
     common_genus != "Vacant",
+    common_genus != "Unassigned",
+    common_genus != "Unknown",
     common_name != "Stump",
     height != "N/A",
     !is.na(diameter)
-  ) %>%
-  mutate(
-    diameter = factor(diameter, levels = diameter_levels, labels = names(diameter_levels)),
-    height = factor(height, levels = height_levels, labels = names(height_levels))
   )
 
 readr::write_rds(x, "tree-town/processed_trees.rds")
